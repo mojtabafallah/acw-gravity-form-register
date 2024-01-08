@@ -97,10 +97,31 @@ function custom_validation($validation_result)
             'first_name' => $name,
             'last_name' => $lastName,
             'display_name' => $name . ' ' . $lastName,
-            'role' => 'subscriber'
+            'role' => 'artist'
         ));
     }
 
     $validation_result['form'] = $form;
     return $validation_result;
+}
+
+//add role artist
+function acw_add_role_artist()
+{
+    add_role('artist', 'هنرمند', get_role('subscriber')->capabilities);
+}
+
+add_action('init', 'acw_add_role_artist');
+
+add_action('init', 'acw_add_short_codes');
+
+function acw_add_short_codes()
+{
+    add_shortcode('acw-register-artist', function () {
+        if (is_user_logged_in() && current_user_can('artist')) {
+            echo '<h5>شما از قبل ثبت نام کرده اید.</h5>';
+        } else {
+           echo do_shortcode(' [gravityform id="2" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+        }
+    });
 }

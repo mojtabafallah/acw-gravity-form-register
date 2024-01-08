@@ -1,0 +1,15 @@
+.acw-submenu-item.acw-hide{
+    display: none;
+}
+.acw-menu-item > a:first-child{
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.acw-menu-item > a:after{ content: ' +'; }
+
+
+.acw-btn-main-page a{
+    font-size: 23px !important;
+    font-weight: bold;
+}

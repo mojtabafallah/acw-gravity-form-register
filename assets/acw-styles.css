@@ -8,8 +8,32 @@
 
 .acw-menu-item > a:after{ content: ' +'; }
 
-
 .acw-btn-main-page a{
     font-size: 23px !important;
     font-weight: bold;
+}
+
+#qodef-page-inner{
+    padding: 0 !important;
+}
+
+.acw-top-menu{
+    padding: 16px 16px;
+    background-color: #02adab;
+    font-size: 20px;
+}
+.acw-top-menu a{
+    background: #d44a98;
+    border-radius: 5px;
+    padding: 3px 11px;
+    color: #fff;
+}
+.acw-top-menu a:hover{
+    color: #fff;
+}
+
+.acw-welcome{
+    border-radius: 5px;
+    padding: 3px 11px;
+    color: #fff;
 }

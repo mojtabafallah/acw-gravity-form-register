@@ -1,39 +1,66 @@
-.acw-submenu-item.acw-hide{
+.acw-submenu-item.acw-hide {
     display: none;
 }
-.acw-menu-item > a:first-child{
+
+.acw-menu-item > a:first-child {
     font-weight: 600;
     font-size: 18px;
 }
 
-.acw-menu-item > a:after{ content: ' +'; }
+.acw-menu-item > a:after {
+    content: ' +';
+}
 
-.acw-btn-main-page a{
+.acw-btn-main-page a {
     font-size: 23px !important;
     font-weight: bold;
 }
 
-#qodef-page-inner{
+#qodef-page-inner {
     padding: 0 !important;
 }
 
-.acw-top-menu{
+.acw-top-menu {
     padding: 16px 16px;
     background-color: #02adab;
     font-size: 20px;
+    display: flex;
+    justify-content: space-between;
 }
-.acw-top-menu a{
+
+.acw-top-menu .acw-top-link {
     background: #d44a98;
     border-radius: 5px;
     padding: 3px 11px;
     color: #fff;
 }
-.acw-top-menu a:hover{
+
+.acw-top-menu a {
+    color: #fff;
+}
+.acw-top-menu a:hover {
     color: #fff;
 }
 
-.acw-welcome{
+.acw-top-menu .acw-top-link:hover {
+    color: #fff;
+}
+
+.acw-welcome {
     border-radius: 5px;
     padding: 3px 11px;
     color: #fff;
 }
+
+/*#qodef-page-header {*/
+/*    height: 57px !important;*/
+/*}*/
+
+.qodef-fullscreen-menu-holder {
+    background: rgba(199, 117, 209, 0.98) !important;
+}
+
+#qodef-woo-page {
+    margin-top: 100px;
+}
+

@@ -3,7 +3,7 @@
 Plugin Name: ACW plugin
 Plugin URI: https://github.com/mojtabafallah
 Description: افزودن امکانات به سایت
-Version: 1.0.0
+Version: 1.1.0
 Requires PHP: 7.4
 Author: Mojtaba Fallah
 Author URI: https://github.com/mojtabafallah

@@ -1,0 +1,17 @@
+{
+    "name": "mojtaba/acw",
+    "autoload": {
+        "psr-4": {
+            "Mojtaba\\Acw\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mojtaba",
+            "email": "mojtaba.fallah1373@gmail.com"
+        }
+    ],
+    "require": {
+        "kavenegar/php": "^1.2"
+    }
+}

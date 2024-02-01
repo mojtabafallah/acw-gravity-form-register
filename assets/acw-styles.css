@@ -22,7 +22,6 @@
 
 .acw-top-menu {
     padding: 16px 16px;
-    background-color: #02adab;
     font-size: 20px;
     display: flex;
     justify-content: space-between;
@@ -33,6 +32,8 @@
     border-radius: 5px;
     padding: 3px 11px;
     color: #fff;
+    margin-left: 10px;
+    margin-right: 10px;
 }
 
 .acw-top-menu a {
@@ -64,3 +65,59 @@
     margin-top: 100px;
 }
 
+.gform_required_legend{
+    display: none !important;
+}
+
+.gform_button{
+    background: #d44a98 !important;
+}
+
+.gform_next_button{
+    background: #d44a98 !important;
+}
+
+.dokan-account-migration-lists{
+    display: none !important;
+}
+
+input{
+    border: 1px solid !important;
+    border-radius: 7px !important;
+}
+
+#qodef-side-area .widget a{
+    color: #3b3939 !important;
+}
+
+#qodef-side-area #qodef-side-area-close{
+    color: #3b3939 !important;
+}
+
+#qodef-side-area .widget{
+    color: #0b0b0b !important;
+}
+
+.acw_address{
+    direction: ltr !important;
+}
+
+.acw_address span{
+    direction: rtl !important;
+}
+
+.acw_address_en{
+    direction: rtl !important;
+}
+
+.acw_address_en span{
+    direction: ltr !important;
+}
+
+.acw_login_digits span{
+    background: #d44a98;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin-top: 10px;
+}

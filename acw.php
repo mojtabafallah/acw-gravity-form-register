@@ -8,6 +8,7 @@ Requires PHP: 7.4
 Author: Mojtaba Fallah
 Author URI: https://github.com/mojtabafallah
 */
+require 'vendor/autoload.php';
 
 //add assets
 add_action('wp_enqueue_scripts', 'acw_add_assets');
@@ -18,26 +19,41 @@ function acw_add_assets()
     wp_enqueue_style('acw_style', plugins_url('assets/acw-styles.css', __FILE__), array(), '1.0.0');
 }
 
+add_action('gform_after_submission_8', 'set_post_content', 10, 2);
+function set_post_content($entry, $form)
+{
+    unset($_SESSION['acw_validation']);
+}
+
+add_action('gform_post_paging_8', 'alert_user', 10, 3);
+function alert_user($form, $source_page_number, $current_page_number)
+{
+    if ($current_page_number == 2 && $source_page_number == 1) {
+        $_SESSION['acw_validation'] = 1;
+    }
+}
+
 add_filter('gform_validation', 'custom_validation');
 function custom_validation($validation_result)
 {
-    $validation_result['is_valid'] = true;
-
     $userName = '';
     $password = '';
     $rePassword = '';
     $name = '';
     $lastName = '';
     $email = '';
+    $mobile = '';
 
     $form = $validation_result['form'];
 
     if ($form['id'] == 2 || $form['id'] == 8)//form register artist
     {
         $fields = $form['fields'];
+        $current_page = rgpost('gform_source_page_number_' . $form['id']) ? rgpost('gform_source_page_number_' . $form['id']) : 1;
+
         foreach ($fields as $field) {
             if ($field['inputName'] == 'acw_first_name') {
-                $name = $value = RGFormsModel::get_field_value($field);
+                $name = RGFormsModel::get_field_value($field);
             }
 
             if ($field['inputName'] == 'acw_last_name') {
@@ -52,14 +68,24 @@ function custom_validation($validation_result)
                 $rePassword = RGFormsModel::get_field_value($field);
             }
 
+            if ($field['inputName'] == 'acw_mobile') {
+                $mobile = RGFormsModel::get_field_value($field);
+            }
+
             if ($field['inputName'] == 'acw_username') {
                 $userName = RGFormsModel::get_field_value($field);
-                //check username exist
-                if (username_exists($userName)) {
-                    // set the form validation to false
-                    $validation_result['is_valid'] = false;
-                    $field->failed_validation = true;
-                    $field->validation_message = 'نام کاربری از قبل وجود دارد';
+                if ($current_page == 1) {
+                    //check username exist
+                    if (username_exists($userName)) {
+                        // set the form validation to false
+                        $validation_result['is_valid'] = false;
+                        $field->failed_validation = true;
+                        if ($form['id'] == 2) {
+                            $field->validation_message = 'نام کاربری از قبل وجود دارد';
+                        } elseif ($form['id'] == 8) {
+                            $field->validation_message = 'Username already exists';
+                        }
+                    }
                 }
             }
 
@@ -75,12 +101,20 @@ function custom_validation($validation_result)
             foreach ($fields as $field) {
                 if ($field['inputName'] == 'acw_password') {
                     $field->failed_validation = true;
-                    $field->validation_message = 'کلمه عبور یکسان نیست';
+                    if ($form['id'] == 2) {
+                        $field->validation_message = 'کلمه عبور یکسان نیست';
+                    } elseif ($form['id'] == 8) {
+                        $field->validation_message = 'The password is not the same';
+                    }
                 }
 
                 if ($field['inputName'] == 'acw_repassword') {
                     $field->failed_validation = true;
-                    $field->validation_message = 'کلمه عبور یکسان نیست';
+                    if ($form['id'] == 2) {
+                        $field->validation_message = 'کلمه عبور یکسان نیست';
+                    } elseif ($form['id'] == 8) {
+                        $field->validation_message = 'The password is not the same';
+                    }
                 }
             }
         } else {
@@ -88,26 +122,64 @@ function custom_validation($validation_result)
                 if ($field['inputName'] == 'acw_password') {
                     $password = RGFormsModel::get_field_value($field);
                     if (strlen($password) < 8) {
+                        $validation_result['is_valid'] = false;
                         $field->failed_validation = true;
-                        $field->validation_message = 'حداقل کلمه عبور 8 کاراکتر میباشد';
+                        if ($form['id'] == 2) {
+                            $field->validation_message = 'حداقل کلمه عبور 8 کاراکتر میباشد';
+                        } elseif ($form['id'] == 8) {
+                            $field->validation_message = 'The minimum password is 8 characters';
+                        }
                     }
                 }
             }
         }
 
-        //register user
-        $user_id = wp_insert_user(array(
-            'user_login' => $userName,
-            'user_pass' => $password,
-            'user_email' => $email,
-            'first_name' => $name,
-            'last_name' => $lastName,
-            'display_name' => $name . ' ' . $lastName,
-            'role' => 'artist'
-        ));
-        wp_set_auth_cookie($user_id);
-    }
+        if ($current_page == 1) {
+            if ($validation_result['is_valid']) {
+                //register user
+                $user_id = wp_insert_user(array(
+                    'user_login' => $userName,
+                    'user_pass' => $password,
+                    'user_email' => $email,
+                    'first_name' => $name,
+                    'last_name' => $lastName,
+                    'display_name' => $name . ' ' . $lastName,
+                    'role' => 'artist'
+                ));
+                if (is_wp_error($user_id)) {
+                    $validation_result['is_valid'] = false;
+                } else {
+                    //send Email
+                    if ($form['id'] == 2) {
+                        $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
+                        $body = '<p>خانم/آقای ' .
+                            $name . ' ' . $lastName . ' ورود شما را به گروه دنیای دست سازه های هنری آریایی خوشامد میگوییم. عضویت شما با کد اشتراک ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+                        $headers = array('From: گروه دنیای دست سازه های هنری   <info@acwgp.com> Content-Type: text/html; charset=UTF-8');
 
+                        wp_mail($email, $subject, $body);
+
+                        //send sms
+                        sendSMS($mobile, 'register', [
+                            'token' => $lastName,
+                            'token2' => $user_id
+                        ]);
+
+                    } elseif ($form['id'] == 8) {
+                        $subject = 'Register site Art Craft World Group';
+                        $body = '<p>' .
+                            $name . ' ' . $lastName . ' Dear, your registration was successful. Your user code: ' . $user_id . '</p>';
+                        $headers = array('From: گروه دنیای دست سازه های هنری   <info@acwgp.com> Content-Type: text/html; charset=UTF-8');
+
+                        wp_mail($email, $subject, $body);
+                    }
+
+                    wp_set_auth_cookie($user_id);
+                }
+            }
+        }
+
+
+    }//form register artist
 
     if ($form['id'] == 4 || $form['id'] == 9)//form register
     {
@@ -129,6 +201,11 @@ function custom_validation($validation_result)
                 $rePassword = RGFormsModel::get_field_value($field);
             }
 
+            if ($field['inputName'] == 'acw_mobile') {
+                $mobile = RGFormsModel::get_field_value($field);
+            }
+
+
             if ($field['inputName'] == 'acw_username') {
                 $userName = RGFormsModel::get_field_value($field);
                 //check username exist
@@ -145,10 +222,20 @@ function custom_validation($validation_result)
 
             if ($field['inputName'] == 'acw_email') {
                 $email = RGFormsModel::get_field_value($field);
+                if (email_exists($email)) {
+                    // set the form validation to false
+                    $validation_result['is_valid'] = false;
+                    $field->failed_validation = true;
+                    if ($form['id'] == 4)
+                        $field->validation_message = 'ایمیل از قبل وجود دارد';
+                    elseif ($form['id'] == 9)
+                        $field->validation_message = 'Email already exists';
+                }
             }
         }
 
         //check password
+
         if ($password !== $rePassword) {
             // set the form validation to false
             $validation_result['is_valid'] = false;
@@ -175,10 +262,11 @@ function custom_validation($validation_result)
                     $password = RGFormsModel::get_field_value($field);
                     if (strlen($password) < 8) {
                         $field->failed_validation = true;
-                        if ($form['id'] == 4)
+                        if ($form['id'] == 4) {
                             $field->validation_message = 'حداقل کلمه عبور 8 کاراکتر میباشد';
-                        elseif ($form['id'] == 9)
+                        } elseif ($form['id'] == 9) {
                             $field->validation_message = 'The minimum password is 8 characters';
+                        }
                     }
                 }
             }
@@ -196,7 +284,6 @@ function custom_validation($validation_result)
                 'role' => 'customer'
             ));
 
-
             if (is_wp_error($user_id)) {
                 $validation_result['is_valid'] = false;
             } else {
@@ -205,13 +292,25 @@ function custom_validation($validation_result)
                     $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
                     $body = '<p>' .
                         $name . ' ' . $lastName . ' عزیز ثبت نام شما با موفقیت انجام شد کد کاربری شما: ' . $user_id . '</p>';
-                    $headers = $headers = array('From: گروه دنیای دست سازه های هنری   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
+                    $headers = array('From: گروه دنیای دست سازه های هنری   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
 
-                    wp_mail($email, $subject, $body, $headers,);
+                    wp_mail($email, $subject, $body);
+
+                    //send sms
+                    sendSMS($mobile, 'register', [
+                        'token' => $lastName,
+                        'token2' => $user_id
+                    ]);
+
+                    //update digits
+                    $mobile = substr($mobile, 1);
+                    update_user_meta($user_id, 'digits_phone_no', $mobile);
+                    update_user_meta($user_id, 'digits_phone', '+98' . $mobile);
+
 
                 } elseif ($form['id'] == 9) {
                     wp_mail($email, 'Register site Art Craft World Group ',
-                        $name . ' ' . $lastName . ' Dear, your registration was successful. Your user code: ' . $user_id);
+                        '<p>' . $name . ' ' . $lastName . ' Dear, your registration was successful. Your user code: ' . $user_id . '</p>');
                 }
 
                 wp_set_auth_cookie($user_id);
@@ -232,7 +331,7 @@ function custom_validation($validation_result)
             $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
             $body = '<p>' . $userItem->display_name . ' عزیز ثبت نام شما با موفقیت انجام شد:  </p>';
             $headers = array('From: گروه دنیای دست سازه های هنری   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
-            wp_mail($email, $subject, $body, $headers,);
+            wp_mail($email, $subject, $body);
         }
 
         //english
@@ -241,7 +340,7 @@ function custom_validation($validation_result)
             $subject = 'Registering the site Art Craft World Group';
             $body = '<p>' . $userItem->display_name . ' Dear, your registration was successful.  </p>';
             $headers = array('From: Art Craft World Group   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
-            wp_mail($email, $subject, $body, $headers,);
+            wp_mail($email, $subject, $body);
         }
     }
     $validation_result['form'] = $form;
@@ -251,7 +350,7 @@ function custom_validation($validation_result)
 add_filter('gform_validation_message', 'change_message', 10, 2);
 function change_message($message, $form)
 {
-    if ($form['id'] == 4 || $form['id'] == 1) {
+    if ($form['id'] == 4 || $form['id'] == 1 || $form['id'] == 2 || $form['id'] == 12) {
         return "<div class='gform_validation_errors'>خطا! لطفا اطلاعات را بررسی کنید</div>";
     }
 
@@ -267,6 +366,7 @@ function change_message($message, $form)
 function acw_add_role_artist()
 {
     add_role('artist', 'هنرمند', get_role('subscriber')->capabilities);
+    add_role('gallery_owner', 'گالری دار', get_role('subscriber')->capabilities);
 }
 
 add_action('init', 'acw_add_role_artist');
@@ -279,10 +379,9 @@ function acw_add_short_codes()
         if (is_user_logged_in() && (current_user_can('artist') || current_user_can('seller'))) {
 
             if (is_rtl())
-                echo '<h5>شما از قبل ثبت نام کرده اید.</h5>';
+                echo do_shortcode('[woocommerce_my_account]');
             else
-                echo '<h5>You are already registered.</h5>';
-
+                echo do_shortcode('[woocommerce_my_account]');
         } else {
             if (is_user_logged_in()) {
                 echo do_shortcode(' [gravityform id="12" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
@@ -292,12 +391,30 @@ function acw_add_short_codes()
         }
     });
 
+    //gallery
+    add_shortcode('acw-register-gallery', function () {
+        if (is_user_logged_in() && (current_user_can('gallery'))) {
+
+            if (is_rtl())
+                echo do_shortcode('[woocommerce_my_account]');
+            else
+                echo do_shortcode('[woocommerce_my_account]');
+        } else {
+            if (is_user_logged_in()) {
+                //TODO باید فرم جدید ک اسم و مشخصات نخاد رو نایش بدیم
+                echo do_shortcode(' [gravityform id="12" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+            } else {
+                echo do_shortcode(' [gravityform id="5" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+            }
+        }
+    });
+
     add_shortcode('acw-register', function () {
         if (is_user_logged_in()) {
             if (is_rtl())
-                echo '<h5>شما از قبل ثبت نام کرده اید.</h5>';
+                echo do_shortcode('[woocommerce_my_account]');
             else
-                echo '<h5>You are already registered.</h5>';
+                echo do_shortcode('[woocommerce_my_account]');
         } else {
             echo do_shortcode(' [gravityform id="4" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
         }
@@ -307,7 +424,8 @@ function acw_add_short_codes()
 
     add_shortcode('acw-register-artist-en', function () {
         if (is_user_logged_in() && current_user_can('artist')) {
-            echo '<h5>You are already registered.</h5>';
+            echo do_shortcode('[woocommerce_my_account]');
+
         } else {
             if (is_user_logged_in()) {
                 echo do_shortcode(' [gravityform id="13" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
@@ -320,11 +438,33 @@ function acw_add_short_codes()
 
     add_shortcode('acw-register-en', function () {
         if (is_user_logged_in()) {
-            echo '<h5>You are already registered.</h5>';
+            echo do_shortcode('[woocommerce_my_account]');
         } else {
             echo do_shortcode(' [gravityform id="9" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
         }
     });
+}
+
+add_filter('wp_mail_content_type', function ($content_type) {
+    return 'text/html';
+});
+
+function sendSMS($phoneNumber, $pattern, $args)
+{
+    $arr = [
+        'receptor' => $phoneNumber,
+        'template' => $pattern,
+        'sender' => '10008663'
+    ];
+    $arr = array_merge($arr, $args);
+    $str = '';
+
+    foreach ($args as $token => $value) {
+        $str .= $token . '=' . $value . '&';
+    }
+
+    $str = rtrim($str, "&");
+    wp_remote_get("https://api.kavenegar.com/v1/635A64724F5130414F6A574555517949327A7A4F74354C4E7454583273713037757842565638306B754F383D/verify/lookup.json?receptor={$phoneNumber}&template={$pattern}&sender=10008663&{$str}");
 }
 
 add_action('boldlab_action_before_page_header_inner', function () {
@@ -333,7 +473,6 @@ add_action('boldlab_action_before_page_header_inner', function () {
         <?php if (is_user_logged_in()): ?>
             <div class="acw-welcome">
                 <?php if (is_rtl()): ?>
-                    <span>سلام </span>
                     <a class="acw-top-link" href="/my-account">
                     <span>
                         <?php
@@ -343,7 +482,6 @@ add_action('boldlab_action_before_page_header_inner', function () {
                     </span>
                     </a>
                 <?php else: ?>
-                    <span>Hi </span>
                     <a class="acw-top-link" href="/en/my-account">
                     <span>
                         <?php
@@ -375,12 +513,8 @@ add_action('boldlab_action_before_page_header_inner', function () {
                     <a class="acw-top-link" href="/register-en">Register</a>
                     <a class="acw-top-link" href="/en/my-account/">Login</a>
                 </div>
-
             <?php endif; ?>
         <?php endif; ?>
-        <a itemprop="url" href="mailto:artcraftworld2021@gmail.com" target="_blank">
-            <span>Artcraftworld2021@gmail.com</span>
-        </a>
     </div>
     <?php
 });

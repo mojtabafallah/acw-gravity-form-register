@@ -15,8 +15,8 @@ add_action('wp_enqueue_scripts', 'acw_add_assets');
 
 function acw_add_assets()
 {
-    wp_enqueue_script('acw_script', plugins_url('assets/acw-js.js', __FILE__), array('jquery'), '1.0.0');
-    wp_enqueue_style('acw_style', plugins_url('assets/acw-styles.css', __FILE__), array(), '1.0.0');
+    wp_enqueue_script('acw_script', plugins_url('assets/acw-js.js', __FILE__), array('jquery'), '2.0.0');
+    wp_enqueue_style('acw_style', plugins_url('assets/acw-styles.css', __FILE__), array(), '2.0.0');
 }
 
 add_action('gform_after_submission_8', 'set_post_content', 10, 2);
@@ -45,6 +45,176 @@ function custom_validation($validation_result)
     $mobile = '';
 
     $form = $validation_result['form'];
+
+    if ($form['id'] == 5 || $form['id'] == 10)//form register gallery
+    {
+        $fields = $form['fields'];
+        $current_page = rgpost('gform_source_page_number_' . $form['id']) ? rgpost('gform_source_page_number_' . $form['id']) : 1;
+
+        foreach ($fields as $field) {
+            if ($field['inputName'] == 'acw_first_name') {
+                $name = RGFormsModel::get_field_value($field);
+            }
+
+            if ($field['inputName'] == 'acw_last_name') {
+                $lastName = RGFormsModel::get_field_value($field);
+            }
+
+            if ($field['inputName'] == 'acw_password') {
+                $password = RGFormsModel::get_field_value($field);
+            }
+
+            if ($field['inputName'] == 'acw_repassword') {
+                $rePassword = RGFormsModel::get_field_value($field);
+            }
+
+            if ($field['inputName'] == 'acw_mobile') {
+                $mobile = RGFormsModel::get_field_value($field);
+            }
+
+            if ($field['inputName'] == 'acw_username') {
+                $userName = RGFormsModel::get_field_value($field);
+                if ($current_page == 1) {
+                    //check username exist
+                    if (username_exists($userName)) {
+                        // set the form validation to false
+                        $validation_result['is_valid'] = false;
+                        $field->failed_validation = true;
+                        if ($form['id'] == 5) {
+                            $field->validation_message = 'نام کاربری از قبل وجود دارد';
+                        } elseif ($form['id'] == 10) {
+                            $field->validation_message = 'Username already exists';
+                        }
+                    }
+                }
+            }
+
+            if ($field['inputName'] == 'acw_email') {
+                $email = RGFormsModel::get_field_value($field);
+                if ($current_page == 1) {
+                    //check email exist
+                    if (email_exists($email)) {
+                        // set the form validation to false
+                        $validation_result['is_valid'] = false;
+                        $field->failed_validation = true;
+                        if ($form['id'] == 5) {
+                            $field->validation_message = 'ایمیل از قبل وجود دارد';
+                        } elseif ($form['id'] == 10) {
+                            $field->validation_message = 'Email already exists';
+                        }
+                    }
+                }
+            }
+        }
+
+        //check password
+        if ($password !== $rePassword) {
+            // set the form validation to false
+            $validation_result['is_valid'] = false;
+            foreach ($fields as $field) {
+                if ($field['inputName'] == 'acw_password') {
+                    $field->failed_validation = true;
+                    if ($form['id'] == 5) {
+                        $field->validation_message = 'کلمه عبور یکسان نیست';
+                    } elseif ($form['id'] == 10) {
+                        $field->validation_message = 'The password is not the same';
+                    }
+                }
+
+                if ($field['inputName'] == 'acw_repassword') {
+                    $field->failed_validation = true;
+                    if ($form['id'] == 5) {
+                        $field->validation_message = 'کلمه عبور یکسان نیست';
+                    } elseif ($form['id'] == 10) {
+                        $field->validation_message = 'The password is not the same';
+                    }
+                }
+            }
+        } else {
+            foreach ($fields as $field) {
+                if ($field['inputName'] == 'acw_password') {
+                    $password = RGFormsModel::get_field_value($field);
+                    if (strlen($password) < 8) {
+                        $validation_result['is_valid'] = false;
+                        $field->failed_validation = true;
+                        if ($form['id'] == 5) {
+                            $field->validation_message = 'حداقل کلمه عبور 8 کاراکتر میباشد';
+                        } elseif ($form['id'] == 10) {
+                            $field->validation_message = 'The minimum password is 8 characters';
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($current_page == 1) {
+            if ($validation_result['is_valid']) {
+                //register user
+                $user_id = wp_insert_user(array(
+                    'user_login' => $userName,
+                    'user_pass' => $password,
+                    'user_email' => $email,
+                    'first_name' => $name,
+                    'last_name' => $lastName,
+                    'display_name' => $name . ' ' . $lastName,
+                    'role' => 'gallery_owner'
+                ));
+                if (is_wp_error($user_id)) {
+                    $validation_result['is_valid'] = false;
+                } else {
+                    //send Email
+                    if ($form['id'] == 5) {
+                        $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
+                        $body = '<p>خانم/آقای ' .
+                            $name . ' ' . $lastName . ' ورود شما را به گروه دنیای دست سازه های هنری آریایی خوشامد میگوییم. عضویت شما با کد اشتراک ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                        wp_mail($email, $subject, $body);
+
+                        //send email to admin
+                        $admin_email = get_bloginfo('admin_email');
+
+                        $subject = 'عضو جدید (گالری دار) سایت گروه دنیای دست سازه های هنری';
+                        $body = '<p>خانم/آقای ' .
+                            $name . ' ' . $lastName . ' به عنوان گالری دار ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                        wp_mail($admin_email, $subject, $body);
+
+                        //send sms
+                        sendSMS($mobile, 'register', [
+                            'token' => $lastName,
+                            'token2' => $user_id
+                        ]);
+
+                        //update digits
+                        $mobile = substr($mobile, 1);
+                        update_user_meta($user_id, 'digits_phone_no', $mobile);
+                        update_user_meta($user_id, 'digits_phone', '+98' . $mobile);
+
+                    } elseif ($form['id'] == 10) {
+                        $subject = 'Register site Art Craft World Group';
+                        $body = '<p>' .
+                            $name . ' ' . $lastName . ' Dear, your registration was successful. Your user code: ' . $user_id . '</p>';
+
+                        wp_mail($email, $subject, $body);
+
+                        //send email to admin
+                        $admin_email = get_bloginfo('admin_email');
+
+                        $subject = 'عضو جدید (گالری دار) سایت گروه دنیای دست سازه های هنری';
+                        $body = '<p>خانم/آقای ' .
+                            $name . ' ' . $lastName . ' به عنوان گالری دار ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                        wp_mail($admin_email, $subject, $body);
+
+                    }
+
+                    wp_set_auth_cookie($user_id);
+                }
+            }
+        }
+
+
+    }//form register gallery
 
     if ($form['id'] == 2 || $form['id'] == 8)//form register artist
     {
@@ -91,6 +261,19 @@ function custom_validation($validation_result)
 
             if ($field['inputName'] == 'acw_email') {
                 $email = RGFormsModel::get_field_value($field);
+                if ($current_page == 1) {
+                    //check username exist
+                    if (email_exists($email)) {
+                        // set the form validation to false
+                        $validation_result['is_valid'] = false;
+                        $field->failed_validation = true;
+                        if ($form['id'] == 2) {
+                            $field->validation_message = 'ایمیل از قبل وجود دارد';
+                        } elseif ($form['id'] == 8) {
+                            $field->validation_message = 'Email already exists';
+                        }
+                    }
+                }
             }
         }
 
@@ -154,7 +337,6 @@ function custom_validation($validation_result)
                         $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
                         $body = '<p>خانم/آقای ' .
                             $name . ' ' . $lastName . ' ورود شما را به گروه دنیای دست سازه های هنری آریایی خوشامد میگوییم. عضویت شما با کد اشتراک ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
-                        $headers = array('From: گروه دنیای دست سازه های هنری   <info@acwgp.com> Content-Type: text/html; charset=UTF-8');
 
                         wp_mail($email, $subject, $body);
 
@@ -164,13 +346,32 @@ function custom_validation($validation_result)
                             'token2' => $user_id
                         ]);
 
+                        //send email to admin
+                        $admin_email = get_bloginfo('admin_email');
+
+                        $subject = 'عضو جدید (هنرمند) سایت گروه دنیای دست سازه های هنری';
+                        $body = '<p>خانم/آقای ' .
+                            $name . ' ' . $lastName . ' به عنوان هنرمند ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                        //update digits
+                        $mobile = substr($mobile, 1);
+                        update_user_meta($user_id, 'digits_phone_no', $mobile);
+                        update_user_meta($user_id, 'digits_phone', '+98' . $mobile);
+
+                        wp_mail($admin_email, $subject, $body);
+
                     } elseif ($form['id'] == 8) {
                         $subject = 'Register site Art Craft World Group';
                         $body = '<p>' .
                             $name . ' ' . $lastName . ' Dear, your registration was successful. Your user code: ' . $user_id . '</p>';
-                        $headers = array('From: گروه دنیای دست سازه های هنری   <info@acwgp.com> Content-Type: text/html; charset=UTF-8');
-
                         wp_mail($email, $subject, $body);
+
+                        $subject = 'عضو جدید (هنرمند) سایت گروه دنیای دست سازه های هنری';
+                        $body = '<p>خانم/آقای ' .
+                            $name . ' ' . $lastName . ' به عنوان هنرمند ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                        wp_mail($admin_email, $subject, $body);
+
                     }
 
                     wp_set_auth_cookie($user_id);
@@ -292,7 +493,6 @@ function custom_validation($validation_result)
                     $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
                     $body = '<p>' .
                         $name . ' ' . $lastName . ' عزیز ثبت نام شما با موفقیت انجام شد کد کاربری شما: ' . $user_id . '</p>';
-                    $headers = array('From: گروه دنیای دست سازه های هنری   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
 
                     wp_mail($email, $subject, $body);
 
@@ -302,6 +502,15 @@ function custom_validation($validation_result)
                         'token2' => $user_id
                     ]);
 
+                    //send email to admin
+                    $admin_email = get_bloginfo('admin_email');
+
+                    $subject = 'عضو جدید (مشتری) سایت گروه دنیای دست سازه های هنری';
+                    $body = '<p>خانم/آقای ' .
+                        $name . ' ' . $lastName . ' به عنوان مشتری ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                    wp_mail($admin_email, $subject, $body);
+
                     //update digits
                     $mobile = substr($mobile, 1);
                     update_user_meta($user_id, 'digits_phone_no', $mobile);
@@ -309,6 +518,17 @@ function custom_validation($validation_result)
 
 
                 } elseif ($form['id'] == 9) {
+
+                    //send email to admin
+                    $admin_email = get_bloginfo('admin_email');
+
+                    $subject = 'عضو جدید (مشتری) سایت گروه دنیای دست سازه های هنری';
+                    $body = '<p>خانم/آقای ' .
+                        $name . ' ' . $lastName . ' به عنوان مشتری ' . $user_id . ' در سایت این مجموعه ثبت گردید </p>';
+
+                    wp_mail($admin_email, $subject, $body);
+
+
                     wp_mail($email, 'Register site Art Craft World Group ',
                         '<p>' . $name . ' ' . $lastName . ' Dear, your registration was successful. Your user code: ' . $user_id . '</p>');
                 }
@@ -330,7 +550,6 @@ function custom_validation($validation_result)
             //send email
             $subject = 'ثبت نام سایت گروه دنیای دست سازه های هنری';
             $body = '<p>' . $userItem->display_name . ' عزیز ثبت نام شما با موفقیت انجام شد:  </p>';
-            $headers = array('From: گروه دنیای دست سازه های هنری   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
             wp_mail($email, $subject, $body);
         }
 
@@ -339,7 +558,6 @@ function custom_validation($validation_result)
             //send email
             $subject = 'Registering the site Art Craft World Group';
             $body = '<p>' . $userItem->display_name . ' Dear, your registration was successful.  </p>';
-            $headers = array('From: Art Craft World Group   <artcraftworld2021@gmail.com> Content-Type: text/html; charset=UTF-8');
             wp_mail($email, $subject, $body);
         }
     }
@@ -350,7 +568,7 @@ function custom_validation($validation_result)
 add_filter('gform_validation_message', 'change_message', 10, 2);
 function change_message($message, $form)
 {
-    if ($form['id'] == 4 || $form['id'] == 1 || $form['id'] == 2 || $form['id'] == 12) {
+    if ($form['id'] == 4 || $form['id'] == 1 || $form['id'] == 2 || $form['id'] == 12 || $form['id'] == 5) {
         return "<div class='gform_validation_errors'>خطا! لطفا اطلاعات را بررسی کنید</div>";
     }
 
@@ -383,6 +601,17 @@ function acw_add_short_codes()
             else
                 echo do_shortcode('[woocommerce_my_account]');
         } else {
+            echo "<p style='font-size: 21px;
+    line-height: 3;
+    text-align: justify;
+    color: black;
+    background: #eaeaea;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 27px;'>
+
+هنرمند عزیز، گروه ACW در راستای خرید و فروش راحت و بی‌واسطه شما عزیزان، فضایی را فراهم نموده که می‌توانید آثار خود را برای نمایش و فروش به طیف وسیعی از مجموعه‌داران، گالری‌ها و هنردوستان ارائه نمایید. برای این کار، کافی است فرم زیر را مطابق اطلاعات خواسته شده تکمیل نمایید.
+</p>";
             if (is_user_logged_in()) {
                 echo do_shortcode(' [gravityform id="12" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
             } else {
@@ -391,9 +620,35 @@ function acw_add_short_codes()
         }
     });
 
+    //English
+
+    add_shortcode('acw-register-artist-en', function () {
+        if (is_user_logged_in() && current_user_can('artist')) {
+            echo do_shortcode('[woocommerce_my_account]');
+
+        } else {
+            echo "<p style='font-size: 21px;
+    line-height: 3;
+    text-align: justify;
+    color: black;
+    background: #eaeaea;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 27px;'>
+    Dear artist, ACW Group has provided a space where you can display and sell your works to a wide range of collectors, galleries and art lovers, in line with your easy and direct buying and selling. For this, just fill out the following form according to the requested information.
+</p>";
+
+            if (is_user_logged_in()) {
+                echo do_shortcode(' [gravityform id="13" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+            } else {
+                echo do_shortcode(' [gravityform id="8" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+            }
+        }
+    });
+
     //gallery
     add_shortcode('acw-register-gallery', function () {
-        if (is_user_logged_in() && (current_user_can('gallery'))) {
+        if (is_user_logged_in() && (current_user_can('gallery_owner'))) {
 
             if (is_rtl())
                 echo do_shortcode('[woocommerce_my_account]');
@@ -401,8 +656,11 @@ function acw_add_short_codes()
                 echo do_shortcode('[woocommerce_my_account]');
         } else {
             if (is_user_logged_in()) {
-                //TODO باید فرم جدید ک اسم و مشخصات نخاد رو نایش بدیم
-                echo do_shortcode(' [gravityform id="12" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+                if (is_rtl()) {
+                    echo do_shortcode(' [gravityform id="16" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+                } else {
+                    echo do_shortcode(' [gravityform id="15" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
+                }
             } else {
                 echo do_shortcode(' [gravityform id="5" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
             }
@@ -419,22 +677,6 @@ function acw_add_short_codes()
             echo do_shortcode(' [gravityform id="4" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
         }
     });
-
-    //English
-
-    add_shortcode('acw-register-artist-en', function () {
-        if (is_user_logged_in() && current_user_can('artist')) {
-            echo do_shortcode('[woocommerce_my_account]');
-
-        } else {
-            if (is_user_logged_in()) {
-                echo do_shortcode(' [gravityform id="13" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
-            } else {
-                echo do_shortcode(' [gravityform id="8" title="false" description="false" ajax="true" tabindex="49" field_values="check=First Choice,Second Choice" theme="orbital"]');
-            }
-        }
-    });
-
 
     add_shortcode('acw-register-en', function () {
         if (is_user_logged_in()) {
@@ -504,13 +746,13 @@ add_action('boldlab_action_before_page_header_inner', function () {
         <?php else: ?>
             <?php if (is_rtl()): ?>
                 <div>
-                    <a class="acw-top-link" href="/register">ثبت نام</a>
+                    <a class="acw-top-link" href="/main-register">ثبت نام</a>
                     <a class="acw-top-link" href="/my-account">ورود</a>
                 </div>
 
             <?php else: ?>
                 <div>
-                    <a class="acw-top-link" href="/register-en">Register</a>
+                    <a class="acw-top-link" href="/en/register/">Register</a>
                     <a class="acw-top-link" href="/en/my-account/">Login</a>
                 </div>
             <?php endif; ?>

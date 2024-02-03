@@ -5,6 +5,23 @@
 .acw-menu-item > a:first-child {
     font-weight: 600;
     font-size: 18px;
+    color: black !important;
+}
+.qodef-page-mobile-header-inner .qodef-open-icon{
+    color: black !important;
+}
+
+.qodef-page-mobile-header-inner .qodef-close-icon{
+    color: black !important;
+}
+
+.qodef-fullscreen-menu--opened .qodef-fullscreen-menu-opener.qodef-fullscreen-menu-opener--predefined{
+    color: black !important;
+}
+
+.qodef-lines{
+    color: black !important;
+
 }
 
 .acw-menu-item > a:after {
@@ -39,6 +56,7 @@
 .acw-top-menu a {
     color: #fff;
 }
+
 .acw-top-menu a:hover {
     color: #fff;
 }
@@ -58,63 +76,73 @@
 /*}*/
 
 .qodef-fullscreen-menu-holder {
-    background: rgba(199, 117, 209, 0.98) !important;
+    background: rgb(233 233 233) !important;
+}
+
+.qodef-fullscreen-menu-holder  .qodef-menu-item-inner{
+    color: #000 !important;
 }
 
 #qodef-woo-page {
     margin-top: 100px;
 }
 
-.gform_required_legend{
+.gform_required_legend {
     display: none !important;
 }
 
-.gform_button{
+.gform_button {
     background: #d44a98 !important;
 }
 
-.gform_next_button{
+.gform_next_button {
     background: #d44a98 !important;
 }
 
-.dokan-account-migration-lists{
+.dokan-account-migration-lists {
     display: none !important;
 }
 
-input{
+input {
     border: 1px solid !important;
     border-radius: 7px !important;
 }
 
-#qodef-side-area .widget a{
+#qodef-side-area .widget a {
     color: #3b3939 !important;
 }
 
-#qodef-side-area #qodef-side-area-close{
+#qodef-side-area #qodef-side-area-close {
     color: #3b3939 !important;
 }
 
-#qodef-side-area .widget{
+#qodef-side-area .widget {
     color: #0b0b0b !important;
 }
 
-.acw_address{
+.acw_address {
     direction: ltr !important;
 }
 
-.acw_address span{
+.acw_address span {
     direction: rtl !important;
 }
 
-.acw_address_en{
+.acw_address_en {
     direction: rtl !important;
 }
 
-.acw_address_en span{
+.gform_next_button {
+    color: white;
+    padding: 10px 20px;
+    font-size: 18px;
+}
+
+.acw_address_en span {
     direction: ltr !important;
 }
 
-.acw_login_digits span{
+.acw_login_digits span {
     background: #d44a98;
     color: #fff;
     padding: 8px 12px;
